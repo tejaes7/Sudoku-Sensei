@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku Coach — A Patient Personal Teacher</title>
+  <meta name="description" content="A warm, explainable Sudoku coach that teaches step by step and explains the reasoning behind every move.">
+  <meta name="theme-color" content="#090D16">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='7' height='7' rx='2' fill='%233B82F6'/%3E%3Crect x='14' y='3' width='7' height='7' rx='2' fill='%238B5CF6'/%3E%3Crect x='3' y='14' width='7' height='7' rx='2' fill='%2306B6D4'/%3E%3Crect x='14' y='14' width='7' height='7' rx='2' fill='%2310B981'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/style.css?v=8.1">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <button id="nav-brand" class="brand-btn" title="Go to home">
+        <span class="brand-icon-box" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="7" height="7" rx="2" fill="#3B82F6"/>
+            <rect x="14" y="3" width="7" height="7" rx="2" fill="#8B5CF6"/>
+            <rect x="3" y="14" width="7" height="7" rx="2" fill="#06B6D4"/>
+            <rect x="14" y="14" width="7" height="7" rx="2" fill="#10B981"/>
+          </svg>
+        </span>
+        <span class="brand-title">Sudoku<span class="brand-gradient">Coach</span></span>
+      </button>
+
+      <div class="header-controls">
+        <div id="nav-workspace-controls" class="header-controls-group" hidden>
+          <button id="btn-level-menu" class="level-badge-btn" aria-label="Change level or view progress">
+            <span class="level-indicator-dot"></span>
+            <span id="level-badge-text">Beginner</span>
+            <span class="caret-down" aria-hidden="true">▾</span>
+          </button>
+
+          <!-- Lesson Mode Navigation -->
+          <div id="nav-lesson-controls" class="nav-select-group">
+            <label for="lesson-select" class="visually-hidden">Lesson</label>
+            <select id="lesson-select" class="link-select"></select>
+          </div>
+
+          <!-- Puzzle Mode Navigation -->
+          <div id="nav-puzzle-controls" class="nav-select-group" hidden>
+            <label for="puzzle-select" class="visually-hidden">Puzzle</label>
+            <select id="puzzle-select" class="link-select"></select>
+            <button id="btn-generate-puzzle" class="btn btn-primary btn-sm" title="Generate a brand-new puzzle for your level">✦ New puzzle</button>
+            <button id="btn-custom-puzzle" class="btn btn-quiet btn-sm" title="Load a custom puzzle">+ Custom</button>
+          </div>
+
+          <div class="action-controls">
+            <button id="btn-undo" class="btn btn-quiet btn-sm" title="Undo last move (Ctrl+Z)" disabled>↶ Undo</button>
+            <button id="btn-reset" class="btn btn-quiet btn-sm" title="Start this puzzle over">⟲ Reset</button>
+            <button id="btn-solve" class="btn btn-quiet btn-sm" title="Let the CSP solver finish the puzzle">⚡ Solve</button>
+          </div>
+        </div>
+
+        <button id="btn-nav-progress" class="btn btn-quiet btn-sm" title="View your progress">Progress</button>
+      </div>
+    </header>
+
+    <!-- =======================================================================
+         SCREEN 1: WELCOME
+         ======================================================================= -->
+    <section id="screen-welcome" class="screen-view active">
+      <div class="welcome-card panel">
+        <div class="welcome-badge">Personal Sudoku Teacher</div>
+        <h1 class="welcome-title">Master Sudoku with patient, <span class="title-accent">step-by-step</span> reasoning.</h1>
+        <p class="welcome-lead">
+          A personal AI coach that teaches you how to look at the grid, explains the exact logic behind every move, and never leaves you guessing.
+        </p>
+
+        <div class="welcome-actions">
+          <button id="btn-welcome-start" class="btn btn-primary btn-large">
+            Get started <span class="btn-arrow">→</span>
+          </button>
+          <div id="welcome-returning-area" class="returning-area" hidden>
+            <button id="btn-welcome-continue" class="btn btn-primary btn-large">
+              Continue where you left off <span class="btn-arrow">→</span>
+            </button>
+            <button id="btn-welcome-change-level" class="link-btn">Change level or start over</button>
+          </div>
+        </div>
+
+        <div class="welcome-pillars">
+          <div class="pillar-item">
+            <span class="pillar-icon" aria-hidden="true">◆</span>
+            <strong>Zero guessing</strong>
+            <span class="pillar-text">Every hint is grounded in deterministic constraint deduction.</span>
+          </div>
+          <div class="pillar-item">
+            <span class="pillar-icon icon-amber" aria-hidden="true">◆</span>
+            <strong>Adaptive hint ladder</strong>
+            <span class="pillar-text">Nudge where to look, then teach the technique, then reveal.</span>
+          </div>
+          <div class="pillar-item">
+            <span class="pillar-icon icon-violet" aria-hidden="true">◆</span>
+            <strong>What-If sandbox</strong>
+            <span class="pillar-text">Test a hypothetical move and see its consequences risk-free.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SCREEN 2: LEVEL SELECTION
+         ======================================================================= -->
+    <section id="screen-level-select" class="screen-view" hidden>
+      <div class="level-select-container">
+        <div class="screen-header">
+          <h2 class="screen-title">How well do you know Sudoku?</h2>
+          <p class="screen-subtitle">Choose where you'd like to begin. You can change this at any time.</p>
+        </div>
+
+        <div class="level-cards-grid">
+          <button class="level-card" data-level="beginner">
+            <span class="level-tag tag-beginner">Level 1</span>
+            <h3 class="level-card-title">Beginner</h3>
+            <p class="level-card-desc">I'm new to Sudoku.</p>
+            <ul class="level-card-features">
+              <li>Interactive lessons on a real board</li>
+              <li>Learn rows, columns, and 3×3 boxes</li>
+              <li>Master Full House &amp; basic Singles</li>
+            </ul>
+            <span class="level-card-action">Start as Beginner <span class="btn-arrow">→</span></span>
+          </button>
+
+          <button class="level-card" data-level="intermediate">
+            <span class="level-tag tag-intermediate">Level 2</span>
+            <h3 class="level-card-title">Intermediate</h3>
+            <p class="level-card-desc">I know the rules and can solve easy puzzles.</p>
+            <ul class="level-card-features">
+              <li>Practice on graded puzzles</li>
+              <li>Learn Naked &amp; Hidden Pairs</li>
+              <li>Pointing Pairs &amp; Box/Line reduction</li>
+            </ul>
+            <span class="level-card-action">Start as Intermediate <span class="btn-arrow">→</span></span>
+          </button>
+
+          <button class="level-card" data-level="advanced">
+            <span class="level-tag tag-advanced">Level 3</span>
+            <h3 class="level-card-title">Advanced</h3>
+            <p class="level-card-desc">I solve medium/hard puzzles and know pairs or X-Wing.</p>
+            <ul class="level-card-features">
+              <li>Complex multi-unit reductions</li>
+              <li>Naked Triples &amp; X-Wings</li>
+              <li>Test branches with What-If simulation</li>
+            </ul>
+            <span class="level-card-action">Start as Advanced <span class="btn-arrow">→</span></span>
+          </button>
+        </div>
+
+        <div class="skill-check-link-area">
+          <button id="btn-open-skill-check" class="text-link">Not sure? Take a 2-minute check</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SCREEN 3: SKILL CHECK QUIZ
+         ======================================================================= -->
+    <section id="screen-skill-check" class="screen-view" hidden>
+      <div class="skill-check-card panel">
+        <div class="skill-check-header">
+          <button id="btn-back-from-check" class="btn btn-quiet btn-sm">← Back to levels</button>
+          <span class="quiz-progress-text" id="quiz-progress-text">Question 1 of 4</span>
+        </div>
+
+        <div class="quiz-progress-track">
+          <div id="quiz-progress-bar" class="quiz-progress-fill" style="width: 25%;"></div>
+        </div>
+
+        <div id="quiz-body" class="quiz-body">
+          <h3 id="quiz-question-title" class="quiz-question-title"></h3>
+          <div id="quiz-options-list" class="quiz-options-list"></div>
+        </div>
+
+        <div id="quiz-result-area" class="quiz-result-area" hidden>
+          <div class="result-badge">Assessment Result</div>
+          <h3 id="quiz-result-title" class="quiz-result-title"></h3>
+          <p id="quiz-result-rationale" class="quiz-result-rationale"></p>
+          <div class="quiz-result-actions">
+            <button id="btn-quiz-accept" class="btn btn-primary btn-large"></button>
+            <button id="btn-quiz-back" class="btn btn-quiet">Choose a different level</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SCREEN 4: PREFERENCE (Intermediate/Advanced only)
+         ======================================================================= -->
+    <section id="screen-preference" class="screen-view" hidden>
+      <div class="preference-card panel">
+        <h2 class="preference-title">How would you like to start?</h2>
+        <p class="preference-subtitle">Choose your preferred pace for this session.</p>
+
+        <div class="preference-options">
+          <button class="pref-option-btn" data-pref="refresher">
+            <span class="pref-icon" aria-hidden="true">📘</span>
+            <span class="pref-btn-title">Quick refresher first</span>
+            <span class="pref-btn-desc">A brief run-through of scanning and candidate elimination before diving in.</span>
+          </button>
+
+          <button class="pref-option-btn" data-pref="puzzles">
+            <span class="pref-icon" aria-hidden="true">🧩</span>
+            <span class="pref-btn-title">Straight into puzzles</span>
+            <span class="pref-btn-desc">Jump right onto the board. Ask for hints whenever you hit a tough spot.</span>
+          </button>
+        </div>
+        <button id="btn-pref-back" class="link-btn pref-back">← Back to levels</button>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         SCREEN 5: WORKSPACE
+         ======================================================================= -->
+    <section id="screen-workspace" class="screen-view" hidden>
+      <main class="main-layout">
+
+        <!-- LEFT COLUMN: Grid, Controls, Numpad -->
+        <section class="board-column">
+          <div class="board-header-bar">
+            <div class="board-title-group">
+              <span id="workspace-mode-tag" class="mode-tag">Guided Lesson</span>
+              <h2 id="workspace-item-title" class="workspace-title">Loading…</h2>
+            </div>
+            <div class="board-meta">
+              <span id="status-line" class="meta-chip" hidden></span>
+              <span id="selected-cell-info" class="meta-chip">No square selected</span>
+            </div>
+          </div>
+
+          <div class="grid-wrapper">
+            <div id="sudoku-grid" class="sudoku-grid" role="grid" aria-label="Sudoku Grid"></div>
+          </div>
+
+          <div class="legend-bar">
+            <span class="legend-item"><span class="legend-swatch swatch-target"></span> Target</span>
+            <span class="legend-item"><span class="legend-swatch swatch-cause"></span> Reasoning neighbors</span>
+            <span class="legend-item"><span class="legend-swatch swatch-elimination"></span> Conflict</span>
+          </div>
+
+          <div id="toolbar-row" class="toolbar-row">
+            <button id="btn-toggle-pencil" class="btn btn-quiet pencil-toggle" title="Toggle pencil marks (P)" aria-pressed="false">
+              <span aria-hidden="true">✎</span> Pencil <span id="pencil-mode-status" class="toggle-pill">Off</span>
+            </button>
+            <button id="btn-check-move" class="btn btn-quiet" title="Check the number in the selected square">✓ Check square</button>
+            <button id="btn-test-move" class="btn btn-quiet" title="Simulate a move without changing the board">◇ What-If</button>
+          </div>
+
+          <div class="numpad-container" id="numpad-container">
+            <button class="num-btn" data-num="1">1</button>
+            <button class="num-btn" data-num="2">2</button>
+            <button class="num-btn" data-num="3">3</button>
+            <button class="num-btn" data-num="4">4</button>
+            <button class="num-btn" data-num="5">5</button>
+            <button class="num-btn" data-num="6">6</button>
+            <button class="num-btn" data-num="7">7</button>
+            <button class="num-btn" data-num="8">8</button>
+            <button class="num-btn" data-num="9">9</button>
+            <button id="btn-clear-cell" class="num-btn num-clear" title="Erase square (Backspace)" aria-label="Erase square">⌫</button>
+          </div>
+          <p class="keyboard-hint">Tip: use arrow keys to move, 1–9 to fill, Backspace to erase, P for pencil.</p>
+        </section>
+
+        <!-- RIGHT COLUMN: Coach Panel -->
+        <section class="coach-column">
+          <div class="panel coach-panel" id="coach-panel">
+
+            <!-- VIEW A: LESSON MODE -->
+            <div id="panel-lesson-view" class="coach-subview" hidden>
+              <span id="lesson-step-counter" class="lesson-step-badge">Lesson 1 of 7</span>
+              <div class="lesson-progress-track"><div id="lesson-progress-fill" class="lesson-progress-fill"></div></div>
+              <h3 id="lesson-task-title" class="lesson-title"></h3>
+              <p id="lesson-task-concept" class="lesson-concept"></p>
+
+              <div class="lesson-task-box">
+                <div class="task-box-label">Your turn</div>
+                <p id="lesson-task-prompt" class="task-box-prompt"></p>
+              </div>
+
+              <div id="lesson-feedback-box" class="lesson-feedback" hidden>
+                <p id="lesson-feedback-text"></p>
+              </div>
+
+              <div class="lesson-actions">
+                <button id="btn-lesson-hint" class="btn btn-quiet">💡 Need a hint?</button>
+                <button id="btn-lesson-next" class="btn btn-primary" hidden>Next lesson →</button>
+              </div>
+            </div>
+
+            <!-- VIEW B: PUZZLE MODE & HINT LADDER -->
+            <div id="panel-puzzle-view" class="coach-subview">
+
+              <div id="mistake-alert-card" class="mistake-alert-card" hidden>
+                <div class="alert-header">
+                  <span class="alert-icon" aria-hidden="true">⚠</span>
+                  <h4 id="mistake-title" class="alert-title">Let's look at that again</h4>
+                </div>
+                <p id="mistake-message" class="alert-message"></p>
+                <div class="alert-actions">
+                  <button id="btn-dismiss-mistake" class="btn btn-quiet btn-sm">Got it</button>
+                  <button id="btn-clear-mistake" class="btn btn-danger btn-sm">Erase square</button>
+                </div>
+              </div>
+
+              <div class="coach-speech-area">
+                <span class="coach-avatar" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M19 17l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg></span>
+                <p id="coach-message" class="coach-message">
+                  Hi — I'm right here with you. Take your time to scan rows and boxes, or tap “Ask for a hint” whenever you'd like guidance.
+                </p>
+              </div>
+
+              <div id="why-it-works-card" class="why-card" hidden>
+                <div class="why-header">
+                  <span class="why-badge">✓ Correct move</span>
+                  <button id="btn-why-it-works" class="link-btn">Why does this work?</button>
+                </div>
+                <div id="why-content" class="why-content" hidden></div>
+              </div>
+
+              <div class="hint-ladder-container">
+                <div class="ladder-header">
+                  <span class="ladder-title">Hint Ladder</span>
+                  <div class="ladder-steps-indicator">
+                    <span id="ladder-dot-1" class="ladder-dot" title="Stage 1: Nudge">1</span>
+                    <span class="ladder-line"></span>
+                    <span id="ladder-dot-2" class="ladder-dot" title="Stage 2: Technique">2</span>
+                    <span class="ladder-line"></span>
+                    <span id="ladder-dot-3" class="ladder-dot" title="Stage 3: Reveal">3</span>
+                  </div>
+                </div>
+
+                <div id="ladder-empty-state" class="ladder-empty">
+                  Hints come in three steps: a <strong>nudge</strong> on where to look, the <strong>technique</strong> to use, then the full <strong>reveal</strong>.
+                </div>
+
+                <div id="ladder-nudge-card" class="ladder-card" hidden>
+                  <div class="ladder-card-tag">Stage 1 · Nudge</div>
+                  <p id="ladder-nudge-text" class="ladder-card-text"></p>
+                </div>
+
+                <div id="ladder-tech-card" class="ladder-card" hidden>
+                  <div class="ladder-card-tag">Stage 2 · Technique</div>
+                  <h4 id="ladder-tech-name" class="ladder-tech-name"></h4>
+                  <p id="ladder-tech-def" class="ladder-tech-def"></p>
+                  <p id="ladder-tech-msg" class="ladder-card-text"></p>
+                </div>
+
+                <div id="ladder-reveal-card" class="ladder-card" hidden>
+                  <div class="ladder-card-tag">Stage 3 · Reveal</div>
+                  <div class="reveal-result-banner">
+                    <span>Target: <strong id="reveal-target-cell"></strong> = <strong id="reveal-target-val"></strong></span>
+                    <button id="btn-apply-reveal" class="btn btn-success btn-sm" hidden>Place it</button>
+                  </div>
+                  <div class="walkthrough-stepper">
+                    <div id="walkthrough-step-text" class="walkthrough-text"></div>
+                    <div class="stepper-controls">
+                      <button id="btn-step-prev" class="btn btn-quiet btn-sm" disabled>← Prev</button>
+                      <span id="walkthrough-counter" class="stepper-counter">1 / 3</span>
+                      <button id="btn-step-next" class="btn btn-quiet btn-sm">Next →</button>
+                    </div>
+                  </div>
+                </div>
+
+                <button id="btn-hint" class="btn btn-primary btn-large btn-block">💡 Ask for a hint</button>
+              </div>
+            </div>
+
+            <!-- VIEW C: WHAT-IF SIMULATOR -->
+            <div id="coach-what-if-view" class="coach-subview" hidden>
+              <div class="what-if-header">
+                <span class="what-if-tag">Sandbox</span>
+                <h3 class="what-if-title">Test a move</h3>
+                <p class="what-if-subtitle">See what happens if you place a number — your real board is never changed.</p>
+              </div>
+
+              <form id="what-if-form" class="what-if-form">
+                <div class="form-row">
+                  <div class="input-group">
+                    <label for="what-if-cell">Square</label>
+                    <input class="input-dark" type="text" id="what-if-cell" maxlength="2" placeholder="e.g. D7" autocomplete="off" spellcheck="false">
+                  </div>
+                  <div class="input-group">
+                    <label for="what-if-val">Number</label>
+                    <input class="input-dark" type="number" id="what-if-val" min="1" max="9" placeholder="1–9">
+                  </div>
+                </div>
+                <div class="what-if-actions">
+                  <button type="submit" id="btn-run-what-if" class="btn btn-violet">Simulate</button>
+                  <button type="button" id="btn-what-if-cancel" class="btn btn-quiet">Back to coach</button>
+                </div>
+              </form>
+
+              <div id="what-if-result-area" class="what-if-result-area" hidden>
+                <div id="what-if-result-text" class="what-if-result"></div>
+                <div class="what-if-actions">
+                  <button id="btn-what-if-again" class="btn btn-quiet">Test another</button>
+                  <button id="btn-what-if-back" class="btn btn-quiet">Back to coach</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </section>
+
+    <footer class="app-footer">
+      Explainable CSP Sudoku Coach · constraint propagation + heuristic search
+    </footer>
+
+    <!-- Progress Modal -->
+    <div id="progress-modal" class="modal-backdrop" hidden>
+      <div class="panel modal-card" role="dialog" aria-modal="true" aria-labelledby="progress-title">
+        <div class="modal-header">
+          <h3 id="progress-title" class="modal-title">Learning Progress</h3>
+          <button id="btn-close-progress" class="btn-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="progress-level-row">
+            <div>
+              <span class="prog-label">Current level</span>
+              <strong id="prog-current-level" class="prog-value">Beginner</strong>
+            </div>
+            <button id="btn-prog-switch-level" class="btn btn-quiet btn-sm">Change level</button>
+          </div>
+          <div class="progress-stats">
+            <div class="stat-box"><span id="stat-solved">0</span>Puzzles solved</div>
+            <div class="stat-box"><span id="stat-hints">0</span>Hints used</div>
+            <div class="stat-box"><span id="stat-mistakes">0</span>Mistakes caught</div>
+          </div>
+          <div class="progress-section">
+            <h4 class="prog-subhead">Techniques encountered</h4>
+            <div id="prog-techniques-list" class="tech-tags-list"></div>
+          </div>
+          <div class="progress-section">
+            <h4 class="prog-subhead">Beginner curriculum</h4>
+            <div id="prog-lessons-list" class="lessons-checklist"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-reset-progress" class="btn btn-quiet btn-danger-text">Reset all progress</button>
+          <button id="btn-done-progress" class="btn btn-primary">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Puzzle Modal -->
+    <div id="custom-modal" class="modal-backdrop" hidden>
+      <div class="panel modal-card modal-sm" role="dialog" aria-modal="true" aria-labelledby="custom-title">
+        <div class="modal-header">
+          <h3 id="custom-title" class="modal-title">Load a custom puzzle</h3>
+          <button id="btn-close-modal" class="btn-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-instruction">Paste an 81-character puzzle using digits <code>1–9</code>, with <code>0</code> or <code>.</code> for empty squares. Spaces and line breaks are ignored.</p>
+          <textarea id="custom-puzzle-input" rows="4" placeholder="003020600900305001001806400…" spellcheck="false"></textarea>
+          <div class="custom-count"><span id="custom-char-count">0</span> / 81</div>
+          <div id="modal-error" class="modal-error" hidden></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-modal" class="btn btn-quiet">Cancel</button>
+          <button id="btn-submit-modal" class="btn btn-primary">Load puzzle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Modal (replaces native confirm/alert) -->
+    <div id="confirm-modal" class="modal-backdrop" hidden>
+      <div class="panel modal-card modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="modal-header">
+          <h3 id="confirm-title" class="modal-title">Are you sure?</h3>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-message" class="modal-instruction"></p>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-confirm-cancel" class="btn btn-quiet">Cancel</button>
+          <button id="btn-confirm-ok" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <script src="/static/app.js?v=8.1"></script>
+</body>
+</html>
