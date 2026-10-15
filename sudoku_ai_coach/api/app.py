@@ -19,7 +19,6 @@ if PARENT_DIR not in sys.path:
 from src.board import SQUARES, parse_grid, grid_to_string
 from src.csp_solver import CSPSolver
 from src.validator import SudokuValidator
-from src.dataset_loader import DatasetLoader
 
 from .board_state import BoardState
 from .analyze import analyze_board
@@ -31,6 +30,7 @@ from .skill_check import SKILL_CHECK_QUESTIONS, evaluate_skill_check
 from .hint_ladder import generate_hint_ladder
 from .puzzle_bank import get_puzzles_by_tier, get_puzzle_by_id, load_puzzle_bank
 from .puzzle_generator import get_fresh_puzzle, start_background_pool
+from .ai_teacher import teacher_chat, teacher_status
 
 # Default benchmark easy puzzle
 DEFAULT_PUZZLE = "003020600900305001001806400008102900700000008006708200002609500800203009005010300"
@@ -117,6 +117,13 @@ class WhyItWorksRequest(BaseModel):
 class LoadBankedPuzzleRequest(BaseModel):
     puzzle_id: str
     session_id: str = "default"
+
+
+class TeacherChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=500)
+    history: List[Dict[str, str]] = []
+    selected_cell: Optional[str] = None
+    user_level: str = "intermediate"
 
 
 class GeneratePuzzleRequest(BaseModel):
@@ -486,6 +493,22 @@ def generate_puzzle_endpoint(req: GeneratePuzzleRequest):
         "board": board_state.to_dict(),
         "analysis": analyze_board(board_state)
     }
+
+
+@app.get("/api/teacher/ai-status")
+def ai_teacher_status():
+    """Report whether the AI Teacher has an LLM connected or is running on the CSP engine alone."""
+    return teacher_status()
+
+
+@app.post("/api/teacher/chat")
+def ai_teacher_chat(req: TeacherChatRequest):
+    """
+    Neuro-symbolic AI Teacher: the CSP engine grounds and verifies, an LLM (if configured) explains.
+    Falls back to the engine's own explanation when no LLM is available or its reply fails verification.
+    """
+    selected = req.selected_cell if req.selected_cell in SQUARES else None
+    return teacher_chat(board_state, req.message, req.history, selected, req.user_level)
 
 
 @app.on_event("startup")

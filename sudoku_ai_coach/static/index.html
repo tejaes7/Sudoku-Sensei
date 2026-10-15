@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/static/style.css?v=8.1">
+  <link rel="stylesheet" href="/static/style.css?v=8.2">
 </head>
 <body>
   <div class="app-container">
@@ -371,6 +371,28 @@
 
                 <button id="btn-hint" class="btn btn-primary btn-large btn-block">💡 Ask for a hint</button>
               </div>
+
+              <!-- AI Teacher chat: CSP engine grounds + verifies, LLM explains -->
+              <div class="ai-teacher-card" id="ai-teacher-card">
+                <div class="ai-teacher-header">
+                  <span class="ai-teacher-title">Ask the AI Teacher</span>
+                  <span id="ai-teacher-mode" class="ai-mode-pill" title="How the AI Teacher is answering">…</span>
+                </div>
+                <div id="ai-chat-log" class="ai-chat-log" aria-live="polite">
+                  <div class="ai-msg ai-msg-teacher">Ask me anything about this board: “where do I start?”, “what can D7 be?”, “what is an X-Wing?”, or “how does your AI work?”</div>
+                </div>
+                <div class="ai-quick-row">
+                  <button class="ai-quick-btn" data-q="Where should I look next?">Where next?</button>
+                  <button class="ai-quick-btn" data-q="Why? Explain the technique.">Why?</button>
+                  <button class="ai-quick-btn" data-q="What can the selected square be?">This square</button>
+                  <button class="ai-quick-btn" data-q="How does your AI work?">How do you work?</button>
+                </div>
+                <form id="ai-chat-form" class="ai-chat-form">
+                  <label for="ai-chat-input" class="visually-hidden">Message the AI Teacher</label>
+                  <input id="ai-chat-input" class="input-dark ai-chat-input" type="text" maxlength="500" placeholder="Ask your teacher…" autocomplete="off">
+                  <button type="submit" id="btn-ai-send" class="btn btn-primary btn-sm">Send</button>
+                </form>
+              </div>
             </div>
 
             <!-- VIEW C: WHAT-IF SIMULATOR -->
@@ -492,6 +514,6 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
 
-  <script src="/static/app.js?v=8.1"></script>
+  <script src="/static/app.js?v=8.2"></script>
 </body>
 </html>

@@ -6,11 +6,7 @@ Implements:
   3. Least Constraining Value (LCV) heuristic.
   4. Peter Norvig's Constraint Propagation + Search agent.
 
-Enables modular toggling of heuristics to compare:
-  - Config A: Plain Backtracking (via BaselineSolver)
-  - Config B: DFS + Forward Checking / AC-3
-  - Config C: DFS + Forward Checking + MRV
-  - Config D: DFS + Forward Checking + MRV + LCV
+Heuristics can be toggled independently (FC / AC-3, MRV, LCV, or Norvig).
 """
 
 import time

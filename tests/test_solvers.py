@@ -5,9 +5,7 @@ Comprehensive Unit Tests for Sudoku Solvers, Board, Validator, and Telemetry.
 import unittest
 from src.board import SQUARES, PEERS, UNITS, parse_grid, grid_to_string
 from src.validator import SudokuValidator
-from src.baseline_solver import BaselineSolver
 from src.csp_solver import CSPSolver
-from src.dataset_loader import DatasetLoader
 
 
 class TestSudokuSuite(unittest.TestCase):
@@ -54,18 +52,6 @@ class TestSudokuSuite(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIn("Clue mismatch", msg)
 
-    def test_baseline_solver_telemetry(self):
-        """Verify BaselineSolver produces valid solution and positive telemetry."""
-        solver = BaselineSolver(timeout_sec=10.0)
-        tel = solver.solve(self.easy_puzzle, puzzle_id="easy_1", difficulty="easy")
-
-        self.assertTrue(tel.solved)
-        self.assertEqual(tel.solution, self.easy_solution)
-        self.assertGreater(tel.nodes_expanded, 0)
-        self.assertGreater(tel.max_depth, 0)
-        self.assertGreater(tel.runtime_ms, 0)
-        self.assertEqual(tel.solver_name, "baseline_dfs")
-
     def test_csp_solver_configurations(self):
         """Verify all 4 incremental CSP configurations solve the puzzle correctly."""
         configs = [
@@ -85,21 +71,6 @@ class TestSudokuSuite(unittest.TestCase):
             self.assertEqual(tel.solution, self.easy_solution, f"{solver.name} produced incorrect solution")
             self.assertGreaterEqual(tel.nodes_expanded, 0)
             self.assertGreater(tel.runtime_ms, 0)
-
-    def test_dataset_loader(self):
-        """Verify dataset loader parses synthetic and kaggle CSV formats."""
-        # Test synthetic CSV
-        puzzles = DatasetLoader.load_csv("data/synthetic_puzzles.csv", max_puzzles=10)
-        self.assertGreaterEqual(len(puzzles), 10)
-        for p in puzzles:
-            self.assertIn(p["difficulty"], ["easy", "medium", "hard", "extreme"])
-            self.assertEqual(len(p["puzzle"]), 81)
-
-        # Test Kaggle format sample
-        kaggle_puzzles = DatasetLoader.load_csv("data/kaggle_sample.csv", max_puzzles=5)
-        self.assertEqual(len(kaggle_puzzles), 5)
-        for p in kaggle_puzzles:
-            self.assertEqual(len(p["puzzle"]), 81)
 
 
 if __name__ == "__main__":

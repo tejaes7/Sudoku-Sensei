@@ -31,11 +31,11 @@ The AI Coach is built as a clean, non-invasive wrapper on top of the established
 
 ```
 Sudokusolver/
-├── src/                         # Core CSP Engine (100% Untouched)
+├── src/                         # Core CSP Engine
 │   ├── board.py                 # Norvig notation (A1–I9), UNITS (27), PEERS (20/cell)
 │   ├── csp_solver.py            # FC, MRV, LCV, AC-3, and Peter Norvig's dual-rule agent
-│   ├── validator.py             # Mathematical AllDifferent constraint validator
-│   └── dataset_loader.py        # Kaggle and Synthetic puzzle loaders
+│   ├── telemetry.py             # Solver result record (runtime, nodes, solution)
+│   └── validator.py             # Mathematical AllDifferent constraint validator
 │
 └── sudoku_ai_coach/             # Explainable Adaptive AI Coach Web Platform
     ├── api/
@@ -57,8 +57,8 @@ Sudokusolver/
     └── README.md                # System documentation
 ```
 
-### Zero-Touch Guarantee
-All original solver and benchmark code in `src/` is untouched. The coach imports `SQUARES`, `UNITS`, `PEERS`, `SudokuBoard`, `CSPSolver`, and `SudokuValidator` directly, respecting the architectural boundaries of the codebase.
+### Shared Engine
+The coach imports `SQUARES`, `UNITS`, `PEERS`, `SudokuBoard`, `CSPSolver`, and `SudokuValidator` directly, respecting the architectural boundaries of the codebase.
 
 ---
 
@@ -108,21 +108,28 @@ AI:   "E6 = 4. It is the only remaining legal candidate for this cell."         
 
 ---
 
-## 6. The Interactive AI Teacher Hub (CS / CSP Course Professor)
+## 6. The AI Teacher (Neuro-Symbolic Tutor)
 
-For computer science and AI students who already know how to play Sudoku, the platform includes a dedicated **AI Teacher Mode** designed to teach the underlying theoretical AI search mechanics:
+The **Ask the AI Teacher** chat panel (`api/ai_teacher.py`, `POST /api/teacher/chat`) answers free-form questions
+about the live board ("where do I start?", "what can D7 be?", "what is an X-Wing?", "how does your AI work?").
+The symbolic CSP engine does all the reasoning; a language model, if one is configured, only phrases the answer.
 
-1. **"Teach Me This Step" (Live Algorithmic Dissection)**:
-   - **Formal CSP Representation**: Shows the exact mathematical domain formula $D(X^*) = \{1..9\} \setminus \bigcup_{Y \in \text{Peers}(X)} \{\text{val}(Y)\}$.
-   - **Algorithmic Technique**: Identifies whether the move uses Forward Checking lookahead, Norvig Rule 1 (Naked Single), Norvig Rule 2 (Unit Hidden Single), or MRV branch selection.
-   - **Search Tree Impact**: Computes the exact reduction in branching factor (e.g. *"Branching factor drops from $b=9$ to $b=1$. Node expansions avoided: 15,300"*).
-2. **"Test My AI Knowledge" (Socratic AI Quizzes)**:
-   - Evaluates the student's mastery of AI concepts in real time based on the active grid (e.g., *"Which cell will the MRV heuristic choose next and why?"*, *"Is this an example of Rule 1 or Rule 2?"*, *"Why does LCV introduce overhead in Sudoku?"*).
-   - Provides immediate interactive feedback and pedagogical reinforcement.
-3. **5-Step Guided AI Walkthrough**:
-   - Compiles a sequential pedagogical trace of how the CSP solver resolves the next 5 moves without mutating the board.
-4. **Structured AI Mini-Lecture Curriculum**:
-   - 6 built-in textbook reference modules covering CSP formulation $\langle X, D, C \rangle$, Forward Checking, MRV ("Fail-First"), LCV ("Succeed-First") & the LCV Paradox, Peter Norvig's dual propagation rules, and combinatorial search complexity $O(9^m)$.
+```
+learner message
+  → 1. intent detection (rule-based: hint / reveal / cell / technique / AI concept / mistake)
+  → 2. symbolic grounding (CSP engine: candidates, mistakes, next deduction chain, unique solution)
+  → 3. information gating (the answer digit is only included when the learner asks for it)
+  → 4. LLM explanation (any OpenAI-compatible model) ──or── engine template (offline)
+  → 5. symbolic verification (every "cell = digit" claim is checked against the solver's solution)
+  → reply + highlighted cells + source label ("llm, verified" or "CSP engine")
+```
+
+If the LLM states a false placement, times out, or no API key is set, the engine's own explanation is returned,
+so the teacher always works offline. Configure it by copying `.env.example` to `.env` (OpenAI, Groq, Gemini and
+OpenRouter all work).
+
+Other teacher features: a 4-question skill check that recommends a level, a 7-lesson beginner curriculum on a
+real board, the 3-stage hint ladder, and a level-graded puzzle generator.
 
 ---
 
@@ -130,12 +137,12 @@ For computer science and AI students who already know how to play Sudoku, the pl
 
 When a user places or checks a digit in cell $X$, the move checker executes a hierarchical validation:
 * **Case A (Immediate Peer Violation)**: Checks if digit $v$ already exists in $X$'s 20 peers (same row, column, or $3 \times 3$ box). If so, rejects immediately and identifies the conflicting cell.
-* **Case B (Future Contradiction via Forward Checking)**: Clones candidate domains, tentatively sets $X \leftarrow v$, and performs forward-checking pruning across all unassigned peers. If any peer domain wipes out to $\emptyset$, rejects the move and flags the peer cell that would be starved of candidates.
-* **Case C (Consistent Move)**: Confirms that the move satisfies all immediate and forward-checking constraints. Explicitly avoids falsely claiming that the move is guaranteed to be part of the final solution unless verified by a full solve.
+* **Case B (Legal but Wrong Path)**: The move breaks no rule yet, but it differs from the puzzle's unique solution (computed once by the Norvig CSP solver), so it must lead to a contradiction later.
+* **Case C (Correct Move)**: The move matches the solution. The coach then explains *why* from the current board (Naked Single, Hidden Single, or "correct but not yet forced by a single rule").
 
 ---
 
-## 7. What-If Speculative Simulation
+## 7b. What-If Speculative Simulation
 
 The What-If engine (`simulate_move`) provides a sandboxed speculative environment:
 ```
@@ -165,6 +172,10 @@ Conclusion: "7 cannot be safely assigned to D7 — it creates a downstream contr
 | `/api/solve` | POST | — | Full solve via Peter Norvig's CSP propagation agent |
 | `/api/puzzles` | GET | — | Preset puzzle catalog (Easy, Medium, Hard, Extreme) |
 | `/api/load-puzzle`| POST| `{puzzle, difficulty}` | Loads arbitrary 81-character puzzle string |
+| `/api/teacher/chat` | POST | `{message, history, selected_cell, user_level}` | AI Teacher: grounded, verified chat reply |
+| `/api/teacher/ai-status` | GET | — | Whether an LLM is connected or the engine runs alone |
+| `/api/teacher/hint-ladder` | POST | `{stage, user_level}` | 3-stage hint (Nudge → Technique → Reveal) with mistake detection |
+| `/api/teacher/generate-puzzle` | POST | `{level}` | New uniquely-solvable puzzle graded to the learner's level |
 
 ---
 
@@ -183,7 +194,7 @@ Open **`http://localhost:8000`** in any modern web browser.
 
 ### 2. Run Automated Unit Tests
 ```bash
-python -m unittest sudoku_ai_coach/tests/test_coach_api.py
+python -m unittest discover -s sudoku_ai_coach/tests -t .
 ```
 
 ### 3. Run Core Solver Tests (Verifying Zero Regressions in `src/`)
@@ -195,6 +206,7 @@ python -m unittest tests/test_solvers.py
 
 ## 10. Limitations & Future Work
 
-1. **Higher-Order Deduction Techniques**: The current explanation engine traces Naked Singles, Hidden Singles, and Forward Checking domain wipeouts. Advanced human techniques such as X-Wings, Swordfish, and Naked Pairs can be formalized as higher-order cycle detection on the constraint graph.
-2. **Backtracking Branch Explanations**: When a puzzle has no deterministic singles available, the engine defaults to the Minimum Remaining Values (MRV) heuristic to suggest the most constrained cell. Future extensions could generate full decision-tree proofs demonstrating why alternate branches fail.
-3. **Session Persistence**: Currently, sessions are maintained in-memory. Multi-user production environments could store game trees in Redis or SQLite.
+1. **Higher-Order Deduction Techniques**: The technique engine covers 9 techniques up to Naked Triple and X-Wing. Chain-based techniques (Swordfish, XY-Wing, coloring) are not implemented yet, so the hardest puzzles still need What-If guessing.
+2. **Verifier Coverage**: The AI Teacher's verifier checks explicit "cell = digit" claims. Softer claims made by the LLM (e.g. about candidate lists) are constrained by the prompt and the grounding facts, but not checked one by one.
+3. **Backtracking Branch Explanations**: When a puzzle has no deterministic singles available, the engine defaults to the Minimum Remaining Values (MRV) heuristic to suggest the most constrained cell. Future extensions could generate full decision-tree proofs demonstrating why alternate branches fail.
+4. **Session Persistence**: Currently, sessions are maintained in-memory. Multi-user production environments could store game trees in Redis or SQLite.

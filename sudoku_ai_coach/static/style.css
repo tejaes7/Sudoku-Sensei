@@ -978,6 +978,24 @@ code {
 
 /* Hint ladder */
 .hint-ladder-container { display: flex; flex-direction: column; gap: 12px; }
+
+/* AI Teacher chat */
+.ai-teacher-card { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.ai-teacher-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-teacher-title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--violet-ink); }
+.ai-mode-pill { font-family: var(--font-mono); font-size: 0.7rem; padding: 3px 9px; border-radius: var(--r-full); background: var(--surface-3); color: var(--ink-3); border: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.ai-mode-pill.ai-mode-llm { background: var(--violet-soft); color: var(--violet-ink); border-color: rgba(168, 85, 247, 0.35); }
+.ai-chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+.ai-msg { font-size: 0.88rem; line-height: 1.5; padding: 9px 12px; border-radius: var(--r-md); max-width: 92%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-msg-teacher { background: var(--surface-3); color: var(--ink-2); align-self: flex-start; border-top-left-radius: 4px; }
+.ai-msg-user { background: var(--primary-soft); color: var(--primary-ink); align-self: flex-end; border-top-right-radius: 4px; }
+.ai-msg-pending { color: var(--ink-4); font-style: italic; }
+.ai-msg-meta { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-4); }
+.ai-quick-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-quick-btn { font: inherit; font-size: 0.76rem; padding: 5px 10px; border-radius: var(--r-full); border: 1px solid var(--border-strong); background: transparent; color: var(--ink-3); cursor: pointer; }
+.ai-quick-btn:hover { color: var(--ink); border-color: var(--violet); }
+.ai-chat-form { display: flex; gap: 8px; }
+.ai-chat-input { flex: 1; min-width: 0; }
 .ladder-header { display: flex; align-items: center; justify-content: space-between; }
 .ladder-title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .ladder-steps-indicator { display: flex; align-items: center; gap: 4px; }

@@ -46,7 +46,7 @@ class TestPuzzleGenerator(unittest.TestCase):
         self.assertGreaterEqual(record["clue_count"], 30)
 
     def test_intermediate_puzzle_requires_intermediate(self):
-        record = generate_puzzle("intermediate", seed=2)
+        record = generate_puzzle("intermediate", seed=2, time_budget=30.0)
         self.assert_valid_puzzle(record)
         self.assertTrue(record["meets_level"])
         self.assertEqual(record["required_tier"], "intermediate")

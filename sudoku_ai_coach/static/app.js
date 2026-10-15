@@ -281,6 +281,7 @@ function settleConfirm(result) {
 // =============================================================================
 function setupApp() {
   attachEventListeners();
+  setupAiTeacher();
   initFlow();
 }
 
@@ -1389,6 +1390,90 @@ function clearHighlights() {
   document.querySelectorAll(".sudoku-cell").forEach(el => {
     el.classList.remove("highlight-target", "highlight-cause", "highlight-elimination");
   });
+}
+
+// =============================================================================
+// AI Teacher Chat (CSP engine grounds + verifies, LLM explains)
+// =============================================================================
+let aiChatHistory = [];
+const aiChatLog = $("ai-chat-log");
+const aiChatForm = $("ai-chat-form");
+const aiChatInput = $("ai-chat-input");
+const btnAiSend = $("btn-ai-send");
+
+async function setupAiTeacher() {
+  aiChatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendAiTeacherMessage(aiChatInput.value);
+  });
+  document.querySelectorAll(".ai-quick-btn").forEach(btn => {
+    btn.addEventListener("click", () => sendAiTeacherMessage(btn.dataset.q));
+  });
+  try {
+    const status = await api("/api/teacher/ai-status");
+    const pill = $("ai-teacher-mode");
+    pill.textContent = status.llm_enabled ? `CSP + ${status.model}` : "CSP engine";
+    pill.title = status.mode;
+    pill.classList.toggle("ai-mode-llm", status.llm_enabled);
+  } catch (e) { /* status pill stays neutral */ }
+}
+
+function appendAiMessage(role, text, meta) {
+  const el = document.createElement("div");
+  el.className = `ai-msg ${role === "user" ? "ai-msg-user" : "ai-msg-teacher"}`;
+  el.textContent = text;
+  if (meta) {
+    const tag = document.createElement("span");
+    tag.className = "ai-msg-meta";
+    tag.textContent = meta;
+    el.appendChild(tag);
+  }
+  aiChatLog.appendChild(el);
+  aiChatLog.scrollTop = aiChatLog.scrollHeight;
+  return el;
+}
+
+async function sendAiTeacherMessage(raw) {
+  let message = (raw || "").trim();
+  if (!message) return;
+  if (message === "What can the selected square be?") {
+    if (!selectedCell) { showToast("Select a square on the board first."); return; }
+    message = `What can ${selectedCell} be?`;
+  }
+  aiChatInput.value = "";
+  appendAiMessage("user", message);
+  const pending = appendAiMessage("teacher", "Thinking…");
+  pending.classList.add("ai-msg-pending");
+  btnAiSend.disabled = true;
+
+  try {
+    const data = await api("/api/teacher/chat", {
+      message,
+      history: aiChatHistory,
+      selected_cell: selectedCell,
+      user_level: userProfile.level || "intermediate"
+    });
+    pending.remove();
+    let meta;
+    if (data.source === "llm") {
+      const n = data.verification ? data.verification.claims_checked : 0;
+      meta = `${data.model} · verified by CSP engine${n ? ` (${n} claim${n > 1 ? "s" : ""} checked)` : ""}`;
+    } else {
+      meta = data.llm_rejected ? "CSP engine · LLM reply rejected by verifier" : "CSP engine";
+    }
+    appendAiMessage("teacher", data.reply, meta);
+    aiChatHistory.push({ role: "user", content: message }, { role: "assistant", content: data.reply });
+    aiChatHistory = aiChatHistory.slice(-8);
+
+    clearHighlights();
+    addClassToCells(data.highlight_cause_cells, "highlight-cause");
+    addClassToCells(data.highlight_target_cells, "highlight-target");
+  } catch (e) {
+    pending.remove();
+    appendAiMessage("teacher", "Sorry, I couldn't reach the engine. Is the server running?");
+  } finally {
+    btnAiSend.disabled = false;
+  }
 }
 
 // =============================================================================
