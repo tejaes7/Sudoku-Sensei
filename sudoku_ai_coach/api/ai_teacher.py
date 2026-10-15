@@ -22,6 +22,7 @@ Configuration (environment variables or a `.env` file in the project root):
   AI_TEACHER_MODEL     e.g. gpt-4o-mini, llama-3.3-70b-versatile, gemini-2.0-flash
 """
 
+import copy
 import json
 import os
 import re
@@ -30,10 +31,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
-from src.board import SQUARES, PEERS, UNITS, SQUARE_TO_COORD, parse_grid
+from src.board import SQUARES, PEERS, UNITS, UNIT_LIST, SQUARE_TO_COORD, parse_grid
 from src.csp_solver import CSPSolver
 from .board_state import BoardState
 from .hint_ladder import find_user_mistakes, build_deduction_chain, TIER_RANK
+from .move_checker import generate_why_it_works
 from .techniques.utils import compute_live_candidates, format_unit_friendly
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -85,7 +87,30 @@ def teacher_status() -> Dict[str, Any]:
 # --------------------------------------------------------------------------
 # 1. Intent detection
 # --------------------------------------------------------------------------
-CELL_RE = re.compile(r"\b([A-Ia-i])\s?([1-9])\b")
+CELL_RE = re.compile(r"\b([A-I])\s?([1-9])\b")      # "D7" or "D 7"
+CELL_RE_LOWER = re.compile(r"\b([a-i])([1-9])\b")  # "d7" only, so "can a 5 go..." is not read as cell A5
+RC_RE = re.compile(r"\br(?:ow)?\s*([1-9])\s*,?\s*c(?:ol(?:umn)?)?\s*([1-9])\b", re.I)  # "r3c5", "row 3 col 5"
+DIGIT_RE = re.compile(r"(?<![A-Za-z0-9])([1-9])(?![0-9])")
+WANTS_ANSWER_WORDS = ["how", "why", "fill", "what goes", "answer", "solve", "reveal", "just tell", "which number",
+                      "what number", "value"]
+
+
+def find_cell(message: str) -> Tuple[Optional[str], Optional[Tuple[int, int]]]:
+    """Return the first cell mentioned (Norvig notation) and its span in the message."""
+    m = CELL_RE.search(message) or CELL_RE_LOWER.search(message)
+    if m:
+        return (m.group(1) + m.group(2)).upper(), m.span()
+    m = RC_RE.search(message)
+    if m:
+        return "ABCDEFGHI"[int(m.group(1)) - 1] + m.group(2), m.span()
+    return None, None
+
+
+def find_digit(message: str, cell_span: Tuple[int, int]) -> Optional[int]:
+    """A standalone digit 1-9 in the message, ignoring the cell reference itself."""
+    rest = message[:cell_span[0]] + " " + message[cell_span[1]:]
+    m = DIGIT_RE.search(rest)
+    return int(m.group(1)) if m else None
 
 TECHNIQUE_KEYWORDS = {
     "full_house": ["full house"],
@@ -118,6 +143,17 @@ def detect_intent(message: str) -> Tuple[str, Dict[str, Any]]:
     text = message.lower().strip()
     slots: Dict[str, Any] = {}
 
+    # Questions about a specific cell come first: "why can't 5 go in A1?", "how was B3 filled?", "what can D7 be?"
+    cell, span = find_cell(message)
+    if cell:
+        slots["cell"] = cell
+        digit = find_digit(message, span)
+        if digit:
+            slots["digit"] = digit
+            return "cell_digit", slots
+        slots["wants_answer"] = any(w in text for w in WANTS_ANSWER_WORDS)
+        return "explain_cell", slots
+
     for concept, words in AI_CONCEPT_KEYWORDS.items():
         if any(w in text for w in words):
             slots["concept"] = concept
@@ -134,11 +170,6 @@ def detect_intent(message: str) -> Tuple[str, Dict[str, Any]]:
 
     if any(w in text for w in ["mistake", "wrong", "error", "did i mess", "is my board", "check my"]):
         return "mistake", slots
-
-    cell_match = CELL_RE.search(message)
-    if cell_match:
-        slots["cell"] = (cell_match.group(1) + cell_match.group(2)).upper()
-        return "explain_cell", slots
 
     if any(w in text for w in ["hint", "stuck", "help", "next", "where", "what should", "what now", "clue"]):
         return "hint", slots
@@ -178,6 +209,149 @@ def describe_cell(grid: List[List[int]], candidates: Dict[str, set], cell: str, 
     }
 
 
+def _with_cell_cleared(board_state: BoardState, cell: str) -> BoardState:
+    """A copy of the board with `cell` emptied, so we can reason about how it gets filled."""
+    clone = copy.deepcopy(board_state)
+    r, c = SQUARE_TO_COORD[cell]
+    clone.board.grid[r][c] = 0
+    return clone
+
+
+def _why(board_state: BoardState, cell: str, value: int) -> Dict[str, Any]:
+    why = generate_why_it_works(board_state, cell, value)
+    return {"technique": why["technique"], "forced_by_a_single_rule": why["forced"], "steps": why["steps"]}
+
+
+def explain_filled_or_empty(board_state: BoardState, cell: str, solution: Optional[str],
+                            wants_answer: bool) -> Dict[str, Any]:
+    """How a filled cell got its value, or how an empty cell can be filled (answer gated by `wants_answer`)."""
+    r, c = SQUARE_TO_COORD[cell]
+    value = board_state.board.grid[r][c]
+    correct = int(solution[r * 9 + c]) if solution else None
+    if board_state.is_clue(cell):
+        return {"how_filled": "It is a starting clue given by the puzzle, so it needs no deduction."}
+    if value:
+        if correct is not None and value != correct:
+            return {"how_filled": "Filled by the learner, but it does NOT match the unique solution (a mistake)."}
+        return {"how_filled": "Filled by the learner and correct. The reasoning that forces it (with the cell emptied):",
+                "reasoning": _why(_with_cell_cleared(board_state, cell), cell, value)}
+    if correct is None:
+        return {}
+    why = _why(board_state, cell, correct)
+    if wants_answer:
+        return {"how_to_fill": why, "solution_value": correct}
+    # Gated: say whether a single rule forces it right now and which, but not the digit
+    return {"how_to_fill": {"forced_by_a_single_rule": why["forced_by_a_single_rule"], "technique": why["technique"]}}
+
+
+def check_digit_in_cell(board_state: BoardState, cell: str, digit: int, solution: Optional[str]) -> Dict[str, Any]:
+    """Can `digit` go in `cell`? Rule conflict, correct (with the forcing reason), or a What-If contradiction chain."""
+    r, c = SQUARE_TO_COORD[cell]
+    current = board_state.board.grid[r][c]
+    facts: Dict[str, Any] = {"cell": cell, "digit": digit}
+    if board_state.is_clue(cell):
+        facts["verdict"] = (f"{cell} is a starting clue fixed as {current}, so it can only ever be {current}."
+                            if current != digit else f"{cell} is a starting clue and it is {digit}.")
+        return facts
+    work = _with_cell_cleared(board_state, cell) if current else board_state
+    if current:
+        facts["currently_filled_with"] = current
+
+    grid = work.board.grid
+    for peer in PEERS[cell]:
+        pr, pc = SQUARE_TO_COORD[peer]
+        if grid[pr][pc] == digit:
+            unit = next(u for u in UNITS[cell] if peer in u)
+            facts["verdict"] = "impossible: breaks the rules"
+            facts["rule_conflict"] = {"conflict_cell": peer, "unit": format_unit_friendly(unit),
+                                      "explanation": f"{peer} in {format_unit_friendly(unit)} already holds {digit}, "
+                                                     f"and a digit may appear only once per row, column and box."}
+            return facts
+
+    if solution and int(solution[r * 9 + c]) == digit:
+        facts["verdict"] = "correct: this is the digit in the unique solution"
+        facts["reasoning"] = _why(work, cell, digit)
+        return facts
+
+    facts["verdict"] = "legal right now, but wrong: it is not in the unique solution"
+    chain = contradiction_chain(work.board.grid, cell, digit)
+    if chain:
+        steps = chain["chain"]
+        if len(steps) > 8:  # keep the explanation readable: the first steps, then the last ones before the contradiction
+            chain["chain"] = steps[:5] + [{"cell": "...", "value": None, "rule": "",
+                                           "reason": f"{len(steps) - 8} more forced singles"}] + steps[-3:]
+        facts["what_if"] = chain
+    else:
+        facts["search_proof"] = search_proof(work, cell, digit)
+    return facts
+
+
+def contradiction_chain(grid: List[List[int]], cell: str, digit: int, max_steps: int = 30) -> Optional[Dict[str, Any]]:
+    """Suppose cell = digit, then apply only Naked and Hidden Singles until some cell or unit becomes impossible.
+    Returns a human-readable chain, or None if singles alone don't reach a contradiction."""
+    g = [row[:] for row in grid]
+    r, c = SQUARE_TO_COORD[cell]
+    g[r][c] = digit
+    chain: List[Dict[str, Any]] = []
+    for _ in range(max_steps):
+        cands = compute_live_candidates(g)
+        empty = [s for s in SQUARES if not _cell_value(g, s)]
+        for s in empty:
+            if not cands[s]:
+                return {"chain": chain, "culprit_cell": s,
+                        "contradiction": f"{s} has no legal digit left: its row, column and box already contain all of 1-9."}
+        for unit in UNIT_LIST:
+            placed = {_cell_value(g, s) for s in unit}
+            for d in range(1, 10):
+                if d not in placed and not any(d in cands[s] for s in unit if not _cell_value(g, s)):
+                    return {"chain": chain, "culprit_cell": None,
+                            "contradiction": f"{format_unit_friendly(unit)} still needs a {d}, but no empty square in it can take {d}."}
+        # Follow cause and effect: prefer cells that see something placed in this chain
+        touched = {cell} | {st["cell"] for st in chain}
+        near = set().union(*(PEERS[t] for t in touched))
+        singles = sorted((s for s in empty if len(cands[s]) == 1), key=lambda s: s not in near)
+        step = next(({"cell": s, "value": next(iter(cands[s])), "rule": "Naked Single",
+                      "reason": f"{s} has only one candidate left"} for s in singles), None)
+        if not step:
+            for unit in sorted(UNIT_LIST, key=lambda u: not touched.intersection(u)):
+                for d in range(1, 10):
+                    spots = [s for s in unit if not _cell_value(g, s) and d in cands[s]]
+                    if len(spots) == 1:
+                        step = {"cell": spots[0], "value": d, "rule": "Hidden Single",
+                                "reason": f"{spots[0]} is the only place for {d} in {format_unit_friendly(unit)}"}
+                        break
+                if step:
+                    break
+        if not step:
+            return None
+        sr, sc = SQUARE_TO_COORD[step["cell"]]
+        g[sr][sc] = step["value"]
+        chain.append(step)
+    return None
+
+
+def search_proof(board_state: BoardState, cell: str, digit: int) -> Dict[str, Any]:
+    """Place `digit` in `cell` and let the full CSP search (forward checking + MRV) try to finish the puzzle.
+    No solution means every branch ends in a contradiction: a proof that the digit is wrong."""
+    grid = [row[:] for row in board_state.board.grid]
+    r, c = SQUARE_TO_COORD[cell]
+    grid[r][c] = digit
+    tel = CSPSolver(propagation="fc", use_mrv=True, timeout_sec=3.0).solve(grid)
+    if tel.solved:
+        return {"proved_impossible": False}
+    if tel.error_message == "Timeout exceeded":
+        return {"proved_impossible": False,
+                "explanation": f"The full CSP search shows the unique solution has a different digit in {cell}."}
+    return {
+        "proved_impossible": True,
+        "explanation": (f"Simple singles don't expose the contradiction, so the CSP solver searched with "
+                        f"{cell} = {digit} fixed: it explored {tel.nodes_expanded} branches (backtracking with "
+                        f"forward checking and MRV, max depth {tel.max_depth}) and every branch ended with some "
+                        f"cell having no legal digit. So the puzzle has no solution with {digit} in {cell}."),
+        "branches_explored": tel.nodes_expanded,
+    }
+
+
 def build_grounding(board_state: BoardState, intent: str, slots: Dict[str, Any],
                     selected_cell: Optional[str], user_level: str) -> Dict[str, Any]:
     """Collect engine-verified facts about the live board. Every fact here is computed, not generated."""
@@ -204,7 +378,10 @@ def build_grounding(board_state: BoardState, intent: str, slots: Dict[str, Any],
 
     if empty:
         mrv = min(empty, key=lambda s: len(candidates[s]))
-        facts["most_constrained_cell"] = {"cell": mrv, "candidates": sorted(candidates[mrv])}
+        facts["most_constrained_cell"] = {"cell": mrv, "candidate_count": len(candidates[mrv])}
+        if intent == "reveal" or len(candidates[mrv]) > 1:
+            # A single candidate would give the answer away, so it is only shared when the learner asks for it
+            facts["most_constrained_cell"]["candidates"] = sorted(candidates[mrv])
 
     if empty and not mistake:
         chain = build_deduction_chain(grid, user_level)
@@ -237,6 +414,12 @@ def build_grounding(board_state: BoardState, intent: str, slots: Dict[str, Any],
         facts["focus_cell"] = describe_cell(grid, candidates, focus, board_state.is_clue(focus))
         if intent == "reveal" and solution:
             facts["focus_cell"]["solution_value"] = int(solution[r * 9 + c])
+        if intent == "explain_cell":
+            facts["focus_cell"].update(
+                explain_filled_or_empty(board_state, focus, solution, slots.get("wants_answer", False)))
+
+    if intent == "cell_digit":
+        facts["digit_check"] = check_digit_in_cell(board_state, slots["cell"], slots["digit"], solution)
 
     return facts
 
@@ -251,25 +434,56 @@ CLAIM_PATTERNS = [
 ]
 
 
-def extract_claims(text: str) -> List[Tuple[str, int]]:
+# A claim inside a hypothetical ("if D7 were 5...", "placing 5 in D7 would...") or a negation ("D7 is not 5")
+# is not an assertion about the solution, so it is not checked.
+HYPOTHETICAL_BEFORE = re.compile(r"\b(if|suppose|supposing|assume|assuming|imagine|were|try|trying|tried|placing|"
+                                 r"putting|what if)\b[^.!?,;]{0,40}$", re.I)
+NEGATION_BEFORE = re.compile(r"\b(not|cannot|can't|never|don't|do not|shouldn't|won't)\s+(?:\w+\s+)?$", re.I)
+HYPOTHETICAL_AFTER = re.compile(r"^[^.!?,;]{0,25}\b(would|leads?|causes?|creates?|breaks?|fails?)\b", re.I)
+
+
+def extract_claims(text: str, skip_hypothetical: bool = False) -> List[Tuple[str, int]]:
     claims: List[Tuple[str, int]] = []
     for i, pat in enumerate(CLAIM_PATTERNS):
         for m in pat.finditer(text):
+            before, after = text[:m.start()], text[m.end():]
+            if skip_hypothetical and (HYPOTHETICAL_BEFORE.search(before) or NEGATION_BEFORE.search(before)
+                                      or HYPOTHETICAL_AFTER.search(after)):
+                continue
             cell, digit = (m.group(1), m.group(2)) if i == 0 else (m.group(2), m.group(1))
             claims.append((cell.upper(), int(digit)))
     return claims
 
 
-def verify_reply(text: str, solution: Optional[str], grid: List[List[int]]) -> Dict[str, Any]:
-    """Check every 'cell = digit' claim against the solver's unique solution."""
-    claims = extract_claims(text)
+def verify_reply(text: str, solution: Optional[str], grid: List[List[int]],
+                 hypotheticals: Optional[set] = None) -> Dict[str, Any]:
+    """Check every 'cell = digit' assertion against the solver's unique solution.
+    `hypotheticals` are (cell, digit) pairs the engine itself is reasoning about (e.g. a What-If chain)."""
+    claims = extract_claims(text, skip_hypothetical=True)
     rejected = []
     if solution:
         for cell, digit in claims:
             r, c = SQUARE_TO_COORD[cell]
+            if (cell, digit) in (hypotheticals or set()):
+                continue
             if int(solution[r * 9 + c]) != digit and grid[r][c] != digit:
                 rejected.append(f"{cell}={digit}")
     return {"claims_checked": len(claims), "rejected_claims": rejected, "passed": not rejected}
+
+
+def hypothetical_claims(facts: Dict[str, Any]) -> set:
+    """(cell, digit) pairs that appear in the engine's own What-If reasoning, so the LLM may repeat them."""
+    check = facts.get("digit_check") or {}
+    pairs = set()
+    if "digit" in check:
+        pairs.add((check["cell"], check["digit"]))
+    for step in (check.get("what_if") or {}).get("chain", []):
+        if step.get("value"):
+            try:
+                pairs.add((step["cell"], int(step["value"])))
+            except (TypeError, ValueError):
+                pass
+    return pairs
 
 
 # --------------------------------------------------------------------------
@@ -281,9 +495,20 @@ You receive its verified facts as JSON. Rules:
 - Use ONLY the facts provided. Never invent candidates, cell values or deductions.
 - If a fact you need is missing (for example the answer digit), do not guess it. Guide the learner to find it.
 - Teach, don't just tell: point to the row/column/box, ask a guiding question, then explain the logic.
-- Cells use Norvig notation: rows A-I top to bottom, columns 1-9 left to right (e.g. D7).
+- Cells use Norvig notation: the LETTER is the row (A-I, top to bottom) and the NUMBER is the column (1-9, left
+  to right). So E3 is Row E, Column 3 - never say "row 3" or "column E".
 - If a mistake is listed, address it kindly before anything else.
-- Keep replies under 120 words, plain text, no markdown headings.
+- If "digit_check" is present, the learner asked whether a digit can go in a cell. Give the verdict first, then the
+  reason: name the conflicting cell and its row/column/box for a rule conflict; walk through "reasoning.steps" when
+  the digit is correct; for a wrong digit, walk through the "what_if.chain" (the cascade that ends in a
+  contradiction, given in "what_if.contradiction") as a hypothetical ("if it were...") and never state the correct
+  digit unless it is provided.
+  If there is no "what_if" chain, use "search_proof" instead. Never invent deduction steps that are not in
+  the facts; if the facts don't show the exact chain, say the solver proved it by search.
+- If "focus_cell" has "how_filled", "reasoning" or "how_to_fill", explain how that cell is (or can be) filled by
+  walking through those steps in order. Only give the digit of an empty cell if "solution_value" is provided.
+- For questions that are not about this board or AI, answer briefly and kindly steer back to the puzzle.
+- Keep replies under 150 words, plain text, no markdown headings or tables.
 - For questions about AI concepts (CSP, MRV, forward checking, AC-3, LCV, backtracking), explain them at a
   university-intro level and connect them to the current board when possible.
 - If asked how you work: the CSP engine does all reasoning and checking; you (the language model) only
@@ -300,14 +525,25 @@ def call_llm(message: str, facts: Dict[str, Any], history: List[Dict[str, str]],
         "role": "user",
         "content": f"VERIFIED ENGINE FACTS (JSON):\n{json.dumps(facts)}\n\nLEARNER: {message}",
     })
+    body: Dict[str, Any] = {"model": cfg["model"], "messages": messages, "temperature": 0.4, "max_tokens": 900}
+    if "gpt-oss" in cfg["model"]:
+        body["reasoning_effort"] = "low"  # reasoning models: keep hidden thinking short so the reply is fast
     resp = httpx.post(
         f"{cfg['base_url']}/chat/completions",
         headers={"Authorization": f"Bearer {cfg['api_key']}", "Content-Type": "application/json"},
-        json={"model": cfg["model"], "messages": messages, "temperature": 0.4, "max_tokens": 350},
+        json=body,
         timeout=LLM_TIMEOUT_SEC,
     )
     resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    return clean_reply(resp.json()["choices"][0]["message"]["content"])
+
+
+def clean_reply(text: str) -> str:
+    """The chat bubble shows plain text, so drop markdown emphasis and turn '*' bullets into '-'."""
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"(?m)^(\s*)\*\s+", r"\1- ", text)
+    text = re.sub(r"(?m)^#+\s*", "", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 # --------------------------------------------------------------------------
@@ -350,7 +586,29 @@ TECHNIQUE_GLOSSARY = {
 }
 
 
+def digit_check_reply(check: Dict[str, Any]) -> str:
+    cell, digit = check["cell"], check["digit"]
+    verdict = check.get("verdict", "")
+    if "rule_conflict" in check:
+        return f"No, {digit} can't go in {cell}. {check['rule_conflict']['explanation']}"
+    if verdict.startswith("correct"):
+        steps = check["reasoning"]["steps"]
+        return f"Yes, {digit} belongs in {cell}. " + " ".join(steps)
+    msg = f"{digit} doesn't break a rule in {cell} right now, but it's wrong. "
+    if "what_if" in check:
+        w = check["what_if"]
+        steps = " ".join(f"Then {s['reason']}, so it would be {s['value']} ({s['rule']})." if s["value"]
+                         else f"({s['reason']}.)" for s in w["chain"])
+        return msg + (f"Suppose {cell} were {digit}. {steps} But now {w['contradiction']} "
+                      f"That's a contradiction, so {digit} can't go in {cell}.")
+    if check.get("search_proof", {}).get("explanation"):
+        return msg + check["search_proof"]["explanation"]
+    return verdict
+
+
 def fallback_reply(intent: str, slots: Dict[str, Any], facts: Dict[str, Any]) -> str:
+    if intent == "cell_digit" and facts.get("digit_check"):
+        return digit_check_reply(facts["digit_check"])
     if facts.get("mistake"):
         m = facts["mistake"]
         return f"Let's fix one thing first. {m['explanation']}"
@@ -369,15 +627,28 @@ def fallback_reply(intent: str, slots: Dict[str, Any], facts: Dict[str, Any]) ->
             return f"{name}: {definition} There's one on the board right now. {step['where_to_look']}"
         return f"{name}: {definition} It isn't the next step on this board, but I'll point it out when it is."
 
+    if intent == "cell_digit" and facts.get("digit_check"):
+        return digit_check_reply(facts["digit_check"])
+
     if intent == "explain_cell" and focus:
         if focus["filled_value"]:
-            return f"{focus['cell']} already holds {focus['filled_value']}" + (" (a starting clue)." if focus["is_starting_clue"] else ".")
+            head = f"{focus['cell']} holds {focus['filled_value']}. {focus.get('how_filled', '')}"
+            steps = (focus.get("reasoning") or {}).get("steps", [])
+            return " ".join([head] + steps).strip()
         seen = "; ".join(f"{u['unit']} has {', '.join(map(str, u['digits_present'])) or 'nothing yet'}" for u in focus["units"])
         cands = focus["candidates"]
         tail = f"so {focus['cell']} can only be {', '.join(map(str, cands))}."
         if len(cands) == 1:
             tail = f"so only {cands[0]} is left. That's a Naked Single!"
-        return f"Let's look at what {focus['cell']} can see: {seen}. That rules out every other digit, {tail}"
+        reply = f"Let's look at what {focus['cell']} can see: {seen}. That rules out every other digit, {tail}"
+        how = focus.get("how_to_fill") or {}
+        if how.get("steps"):
+            reply += " " + " ".join(how["steps"])
+        elif how and len(cands) > 1:
+            reply += (f" Right now it's forced by a {how['technique']}. Ask me 'how do I fill {focus['cell']}?' for the steps."
+                      if how.get("forced_by_a_single_rule") else
+                      " No single rule forces it yet, so it can't be filled safely right now. Fill other cells first.")
+        return reply
 
     if not step:
         return "No standard technique applies right now. Try a speculative move with What-If, or check your pencil marks."
@@ -414,6 +685,13 @@ def teacher_chat(board_state: BoardState, message: str, history: Optional[List[D
         highlight_target = [facts["mistake"]["cell"]]
         if facts["mistake"].get("conflicting_cell"):
             highlight_cause = [facts["mistake"]["conflicting_cell"]]
+    elif facts.get("digit_check"):
+        dc = facts["digit_check"]
+        highlight_target = [dc["cell"]]
+        if "rule_conflict" in dc:
+            highlight_cause = [dc["rule_conflict"]["conflict_cell"]]
+        elif dc.get("what_if", {}).get("culprit_cell"):
+            highlight_cause = [dc["what_if"]["culprit_cell"]]
     elif facts.get("next_deduction") and intent in ("hint", "explain_step", "reveal", "technique"):
         highlight_cause = facts["next_deduction"]["cause_cells"]
         highlight_target = facts["next_deduction"].get("target_cells", [])
@@ -430,7 +708,8 @@ def teacher_chat(board_state: BoardState, message: str, history: Optional[List[D
     if cfg["api_key"]:
         try:
             reply = call_llm(message, facts, history or [], cfg)
-            check = verify_reply(reply, solve_unique(board_state.initial_puzzle), board_state.board.grid)
+            check = verify_reply(reply, solve_unique(board_state.initial_puzzle), board_state.board.grid,
+                                 hypothetical_claims(facts))
             if check["passed"]:
                 return {**result, "reply": reply, "source": "llm", "model": cfg["model"], "verification": check}
             result["verification"] = check
