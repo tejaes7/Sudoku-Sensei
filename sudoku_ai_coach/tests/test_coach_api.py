@@ -169,6 +169,24 @@ class TestSudokuAICoach(unittest.TestCase):
         self.assertEqual(self.board.get_current_string(), orig_str)
         self.assertEqual(self.board.get_cell_value("A1"), 0)
 
+    def test_m3_what_if_wrong_digit_shows_real_cascade(self):
+        """A legal-but-wrong digit must end in a contradiction somewhere else, reached through forced singles."""
+        from sudoku_ai_coach.api.ai_teacher import solve_unique
+        from sudoku_ai_coach.api.techniques.utils import compute_live_candidates
+        from src.board import SQUARES, SQUARE_TO_COORD
+        sol = solve_unique(self.board.initial_puzzle)
+        cands = compute_live_candidates(self.board.board.grid)
+        cell, digit = next((s, d) for s in SQUARES for d in sorted(cands[s])
+                           if int(sol[SQUARE_TO_COORD[s][0] * 9 + SQUARE_TO_COORD[s][1]]) != d)
+        res = simulate_move(self.board, cell, digit)
+        self.assertFalse(res["success"])
+        self.assertTrue(res["contradiction"])
+        self.assertNotEqual(res.get("culprit_cell"), cell)
+        self.assertTrue(res["cascade_steps"] or res.get("search_proof"))
+        if res["cascade_steps"]:
+            self.assertTrue(res["cascade_steps"][-1]["contradiction"])
+            self.assertTrue(all(s["explanation"] for s in res["cascade_steps"]))
+
     def test_m3_what_if_immediate_conflict(self):
         """Verify what-if handles immediate conflict gracefully."""
         res = simulate_move(self.board, "A1", 3)

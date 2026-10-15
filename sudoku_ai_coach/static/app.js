@@ -1583,6 +1583,7 @@ async function runWhatIfSimulation() {
     whatIfResultArea.hidden = false;
 
     clearHighlights();
+    addClassToCells(steps.filter(s => !s.contradiction && s.cell).slice(0, 12).map(s => s.cell), "highlight-cause");
     addClassToCells([cell], "highlight-target");
     if (data.culprit_cell && data.culprit_cell !== cell) addClassToCells([data.culprit_cell], "highlight-elimination");
   } catch (e) {

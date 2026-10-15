@@ -31,11 +31,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
-from src.board import SQUARES, PEERS, UNITS, UNIT_LIST, SQUARE_TO_COORD, parse_grid
+from src.board import SQUARES, PEERS, UNITS, SQUARE_TO_COORD, parse_grid
 from src.csp_solver import CSPSolver
 from .board_state import BoardState
 from .hint_ladder import find_user_mistakes, build_deduction_chain, TIER_RANK
 from .move_checker import generate_why_it_works
+from .what_if import singles_cascade, search_proof
 from .techniques.utils import compute_live_candidates, format_unit_friendly
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -282,74 +283,23 @@ def check_digit_in_cell(board_state: BoardState, cell: str, digit: int, solution
                                            "reason": f"{len(steps) - 8} more forced singles"}] + steps[-3:]
         facts["what_if"] = chain
     else:
-        facts["search_proof"] = search_proof(work, cell, digit)
+        facts["search_proof"] = search_proof(work.board.grid, cell, digit)
     return facts
 
 
-def contradiction_chain(grid: List[List[int]], cell: str, digit: int, max_steps: int = 30) -> Optional[Dict[str, Any]]:
-    """Suppose cell = digit, then apply only Naked and Hidden Singles until some cell or unit becomes impossible.
-    Returns a human-readable chain, or None if singles alone don't reach a contradiction."""
-    g = [row[:] for row in grid]
-    r, c = SQUARE_TO_COORD[cell]
-    g[r][c] = digit
-    chain: List[Dict[str, Any]] = []
-    for _ in range(max_steps):
-        cands = compute_live_candidates(g)
-        empty = [s for s in SQUARES if not _cell_value(g, s)]
-        for s in empty:
-            if not cands[s]:
-                return {"chain": chain, "culprit_cell": s,
-                        "contradiction": f"{s} has no legal digit left: its row, column and box already contain all of 1-9."}
-        for unit in UNIT_LIST:
-            placed = {_cell_value(g, s) for s in unit}
-            for d in range(1, 10):
-                if d not in placed and not any(d in cands[s] for s in unit if not _cell_value(g, s)):
-                    return {"chain": chain, "culprit_cell": None,
-                            "contradiction": f"{format_unit_friendly(unit)} still needs a {d}, but no empty square in it can take {d}."}
-        # Follow cause and effect: prefer cells that see something placed in this chain
-        touched = {cell} | {st["cell"] for st in chain}
-        near = set().union(*(PEERS[t] for t in touched))
-        singles = sorted((s for s in empty if len(cands[s]) == 1), key=lambda s: s not in near)
-        step = next(({"cell": s, "value": next(iter(cands[s])), "rule": "Naked Single",
-                      "reason": f"{s} has only one candidate left"} for s in singles), None)
-        if not step:
-            for unit in sorted(UNIT_LIST, key=lambda u: not touched.intersection(u)):
-                for d in range(1, 10):
-                    spots = [s for s in unit if not _cell_value(g, s) and d in cands[s]]
-                    if len(spots) == 1:
-                        step = {"cell": spots[0], "value": d, "rule": "Hidden Single",
-                                "reason": f"{spots[0]} is the only place for {d} in {format_unit_friendly(unit)}"}
-                        break
-                if step:
-                    break
-        if not step:
-            return None
-        sr, sc = SQUARE_TO_COORD[step["cell"]]
-        g[sr][sc] = step["value"]
-        chain.append(step)
-    return None
+RULE_NAMES = {"naked_single": "Naked Single", "hidden_single": "Hidden Single"}
 
 
-def search_proof(board_state: BoardState, cell: str, digit: int) -> Dict[str, Any]:
-    """Place `digit` in `cell` and let the full CSP search (forward checking + MRV) try to finish the puzzle.
-    No solution means every branch ends in a contradiction: a proof that the digit is wrong."""
-    grid = [row[:] for row in board_state.board.grid]
-    r, c = SQUARE_TO_COORD[cell]
-    grid[r][c] = digit
-    tel = CSPSolver(propagation="fc", use_mrv=True, timeout_sec=3.0).solve(grid)
-    if tel.solved:
-        return {"proved_impossible": False}
-    if tel.error_message == "Timeout exceeded":
-        return {"proved_impossible": False,
-                "explanation": f"The full CSP search shows the unique solution has a different digit in {cell}."}
-    return {
-        "proved_impossible": True,
-        "explanation": (f"Simple singles don't expose the contradiction, so the CSP solver searched with "
-                        f"{cell} = {digit} fixed: it explored {tel.nodes_expanded} branches (backtracking with "
-                        f"forward checking and MRV, max depth {tel.max_depth}) and every branch ended with some "
-                        f"cell having no legal digit. So the puzzle has no solution with {digit} in {cell}."),
-        "branches_explored": tel.nodes_expanded,
-    }
+def contradiction_chain(grid: List[List[int]], cell: str, digit: int) -> Optional[Dict[str, Any]]:
+    """The What-If engine's singles cascade from cell = digit, if it ends in a contradiction."""
+    cascade = singles_cascade(grid, cell, digit)
+    if not cascade["contradiction"]:
+        return None
+    *forced, last = cascade["steps"]
+    return {"chain": [{"cell": s["cell"], "value": s["value"], "rule": RULE_NAMES[s["step_type"]], "reason": s["reason"]}
+                      for s in forced],
+            "culprit_cell": cascade["culprit_cell"], "contradiction": last["reason"]}
+
 
 
 def build_grounding(board_state: BoardState, intent: str, slots: Dict[str, Any],
