@@ -1,0 +1,282 @@
+{
+  "beginner": [
+    {
+      "puzzle_id": "beg_1",
+      "title": "Gentle Warmup",
+      "difficulty": "beginner",
+      "clue_count": 32,
+      "puzzle": "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
+      "solution": "483921657967345821251876493548132976729564138136798245372689514814253769695417382",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "A classic intro grid that yields smoothly to Full House and singles."
+    },
+    {
+      "puzzle_id": "beg_2",
+      "title": "Beginner Puzzle #2",
+      "difficulty": "beginner",
+      "clue_count": 38,
+      "puzzle": "601405879907300450045000300004008600000070041703200980450000000076102004012049008",
+      "solution": "631425879987361452245897316124958637598673241763214985459786123876132594312549768",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Focus on row scanning and finding full house cells."
+    },
+    {
+      "puzzle_id": "beg_3",
+      "title": "Beginner Puzzle #3",
+      "difficulty": "beginner",
+      "clue_count": 38,
+      "puzzle": "348072900609840507070000034702001345003007008086050009907008400001000096024700000",
+      "solution": "348572961619843527275916834792681345453297618186354279967138452831425796524769183",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Focus on row scanning and finding full house cells."
+    },
+    {
+      "puzzle_id": "beg_4",
+      "title": "Beginner Puzzle #4",
+      "difficulty": "beginner",
+      "clue_count": 38,
+      "puzzle": "800109704047065019003204600030407100061000847000500000020758060000340500005691002",
+      "solution": "856139724247865319193274685932487156561923847478516293324758961619342578785691432",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Focus on row scanning and finding full house cells."
+    },
+    {
+      "puzzle_id": "beg_5",
+      "title": "Beginner Puzzle #5",
+      "difficulty": "beginner",
+      "clue_count": 38,
+      "puzzle": "040070860020000100901620534064037209500190400092864703000000340206400005083000000",
+      "solution": "345971862628345197971628534864537219537192486192864753759216348216483975483759621",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Focus on row scanning and finding full house cells."
+    },
+    {
+      "puzzle_id": "beg_6",
+      "title": "Beginner Puzzle #6",
+      "difficulty": "beginner",
+      "clue_count": 38,
+      "puzzle": "600050700000900320890203005000190070206345000000000504050802060004519207782630051",
+      "solution": "623451798541987326897263145435198672276345819918726534159872463364519287782634951",
+      "hardest_technique": "full_house",
+      "techniques_used": [
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Focus on row scanning and finding full house cells."
+    }
+  ],
+  "intermediate": [
+    {
+      "puzzle_id": "inter_1",
+      "title": "Intermediate Challenge #1",
+      "difficulty": "intermediate",
+      "clue_count": 25,
+      "puzzle": "040030826900000004000000300006703100091200030000000050080004000030090005002001060",
+      "solution": "745139826913682574268457391526743189891265437374918652689524713137896245452371968",
+      "hardest_technique": "naked_pair",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "naked_pair"
+      ],
+      "description": "Requires Naked Pair to unlock the grid without guessing."
+    },
+    {
+      "puzzle_id": "inter_2",
+      "title": "Intermediate Challenge #2",
+      "difficulty": "intermediate",
+      "clue_count": 25,
+      "puzzle": "000090300160000000807301000000804100900030054000000230000007020006000000324000610",
+      "solution": "245798361163542798897361542632854179971236854458179236589617423716423985324985617",
+      "hardest_technique": "naked_pair",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "naked_pair"
+      ],
+      "description": "Requires Naked Pair to unlock the grid without guessing."
+    },
+    {
+      "puzzle_id": "inter_3",
+      "title": "Intermediate Challenge #3",
+      "difficulty": "intermediate",
+      "clue_count": 22,
+      "puzzle": "000006000000900300307000520000007608000060000040510000000203000000000401080045900",
+      "solution": "529736814814952367367481529195327648273864195648519273451293786932678451786145932",
+      "hardest_technique": "naked_pair",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "naked_pair"
+      ],
+      "description": "Requires Naked Pair to unlock the grid without guessing."
+    },
+    {
+      "puzzle_id": "inter_4",
+      "title": "Intermediate Challenge #4",
+      "difficulty": "intermediate",
+      "clue_count": 24,
+      "puzzle": "000502000150000040000730000090048000010900080008000650000000000003050004809270010",
+      "solution": "374512968152896347986734125695348271217965483438127659561489732723651894849273516",
+      "hardest_technique": "hidden_pair",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "hidden_pair"
+      ],
+      "description": "Requires Hidden Pair to unlock the grid without guessing."
+    },
+    {
+      "puzzle_id": "inter_5",
+      "title": "Intermediate Challenge #5",
+      "difficulty": "intermediate",
+      "clue_count": 24,
+      "puzzle": "092030004630000000800007005020700006000041000100809000009064020000102700000000000",
+      "solution": "792536184635418972814297365928753416357641298146829537579364821463182759281975643",
+      "hardest_technique": "naked_pair",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "naked_pair"
+      ],
+      "description": "Requires Naked Pair to unlock the grid without guessing."
+    },
+    {
+      "puzzle_id": "inter_6",
+      "title": "Intermediate Challenge #6",
+      "difficulty": "intermediate",
+      "clue_count": 26,
+      "puzzle": "050097600000060015000000003060000000390014000007903000800000000015000490020156080",
+      "solution": "158397624739462815246581973461875239392614758587923146873249561615738492924156387",
+      "hardest_technique": "naked_pair",
+      "techniques_used": [
+        "hidden_single",
+        "hidden_pair",
+        "naked_pair",
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Requires Naked Pair to unlock the grid without guessing."
+    }
+  ],
+  "advanced": [
+    {
+      "puzzle_id": "adv_1",
+      "title": "Mastery Grid #1",
+      "difficulty": "advanced",
+      "clue_count": 24,
+      "puzzle": "000309700070000100306002000800006230000800000067400008000048000192000080000000009",
+      "solution": "518369742279584163346172895851796234423851976967423518735948621192635487684217359",
+      "hardest_technique": "x_wing",
+      "techniques_used": [
+        "hidden_single",
+        "naked_pair",
+        "naked_single",
+        "pointing_pair",
+        "x_wing",
+        "full_house"
+      ],
+      "description": "Needs X-Wing to finish without guessing."
+    },
+    {
+      "puzzle_id": "adv_2",
+      "title": "Mastery Grid #2",
+      "difficulty": "advanced",
+      "clue_count": 24,
+      "puzzle": "500600000067080010002000040090500000000400000000008903030900004000005300058320600",
+      "solution": "519647238467283519382159746891532467723496185645718923236971854174865392958324671",
+      "hardest_technique": "x_wing",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "full_house",
+        "hidden_pair",
+        "pointing_pair",
+        "box_line_reduction",
+        "x_wing"
+      ],
+      "description": "Needs X-Wing to finish without guessing."
+    },
+    {
+      "puzzle_id": "adv_3",
+      "title": "Mastery Grid #3",
+      "difficulty": "advanced",
+      "clue_count": 25,
+      "puzzle": "060210000700000020004005700000700010600003508005000000050004070090008053000030804",
+      "solution": "563217489781349625924865731849756312617923548235481967358194276492678153176532894",
+      "hardest_technique": "naked_triple",
+      "techniques_used": [
+        "hidden_single",
+        "naked_single",
+        "hidden_pair",
+        "naked_pair",
+        "pointing_pair",
+        "naked_triple",
+        "x_wing",
+        "full_house"
+      ],
+      "description": "Needs Naked Triple to finish without guessing."
+    },
+    {
+      "puzzle_id": "adv_4",
+      "title": "Mastery Grid #4",
+      "difficulty": "advanced",
+      "clue_count": 24,
+      "puzzle": "060000509500008070000700004280300040004090080600000000000800000005600000810004730",
+      "solution": "768143529542968371931752864287316945154297683693485217476839152325671498819524736",
+      "hardest_technique": "x_wing",
+      "techniques_used": [
+        "hidden_single",
+        "pointing_pair",
+        "x_wing",
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Needs X-Wing to finish without guessing."
+    },
+    {
+      "puzzle_id": "adv_5",
+      "title": "Mastery Grid #5",
+      "difficulty": "advanced",
+      "clue_count": 24,
+      "puzzle": "030050100000004035100007000007001900420000050050090704000200000208000610000000009",
+      "solution": "832956147976124835145837296387541962429768351651392784563219478298475613714683529",
+      "hardest_technique": "naked_triple",
+      "techniques_used": [
+        "hidden_single",
+        "naked_pair",
+        "pointing_pair",
+        "box_line_reduction",
+        "naked_triple",
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Needs Naked Triple to finish without guessing."
+    }
+  ]
+}

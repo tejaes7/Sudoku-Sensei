@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sudoku-ai-coach
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # One worker: the board and coach sessions live in process memory.
+    startCommand: uvicorn sudoku_ai_coach.api.app:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/board
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Optional LLM for the AI Teacher; leave blank to run on the CSP engine alone.
+      - key: AI_TEACHER_API_KEY
+        sync: false
+      - key: AI_TEACHER_BASE_URL
+        sync: false
+      - key: AI_TEACHER_MODEL
+        sync: false

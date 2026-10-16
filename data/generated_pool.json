@@ -1,0 +1,117 @@
+{
+  "beginner": [],
+  "intermediate": [
+    {
+      "puzzle_id": "gen_c0e15c61",
+      "title": "Fresh Intermediate \u00b7 Naked Pair",
+      "difficulty": "intermediate",
+      "generated": true,
+      "meets_level": true,
+      "clue_count": 24,
+      "puzzle": "900000000007090080080000006000067005000003004510048600004000700050630001000005003",
+      "solution": "926851347137496582485372916842967135679513824513248679364129758758634291291785463",
+      "required_tier": "intermediate",
+      "hardest_technique": "naked_pair",
+      "hardest_technique_label": "Naked Pair",
+      "techniques_used": [
+        "naked_single",
+        "full_house",
+        "hidden_single",
+        "naked_pair"
+      ],
+      "description": "Freshly generated. You'll need Naked Pair to crack it without guessing."
+    },
+    {
+      "puzzle_id": "gen_1e5204b4",
+      "title": "Fresh Intermediate \u00b7 Pointing Pair",
+      "difficulty": "intermediate",
+      "generated": true,
+      "meets_level": true,
+      "clue_count": 26,
+      "puzzle": "000070000001053000320400009805004003260700008040005020000040972000000000050208000",
+      "solution": "596172384481953267327486519875624193263719458149835726638541972912367845754298631",
+      "required_tier": "intermediate",
+      "hardest_technique": "pointing_pair",
+      "hardest_technique_label": "Pointing Pair",
+      "techniques_used": [
+        "hidden_single",
+        "naked_single",
+        "pointing_pair",
+        "full_house"
+      ],
+      "description": "Freshly generated. You'll need Pointing Pair to crack it without guessing."
+    }
+  ],
+  "advanced": [
+    {
+      "puzzle_id": "gen_b348545f",
+      "title": "Fresh Advanced \u00b7 Naked Triple",
+      "difficulty": "advanced",
+      "generated": true,
+      "meets_level": true,
+      "clue_count": 26,
+      "puzzle": "300000000090207080050006001000070000020600040600405090005040706000090520700003900",
+      "solution": "376184259194257683258936471549378162827619345631425897915842736463791528782563914",
+      "required_tier": "advanced",
+      "hardest_technique": "naked_triple",
+      "hardest_technique_label": "Naked Triple",
+      "techniques_used": [
+        "naked_single",
+        "hidden_single",
+        "naked_pair",
+        "hidden_pair",
+        "naked_triple",
+        "box_line_reduction",
+        "full_house"
+      ],
+      "description": "Freshly generated. You'll need Naked Triple to crack it without guessing."
+    },
+    {
+      "puzzle_id": "gen_f00e02bf",
+      "title": "Fresh Advanced \u00b7 Naked Triple",
+      "difficulty": "advanced",
+      "generated": true,
+      "meets_level": true,
+      "clue_count": 26,
+      "puzzle": "900041200000803000520000008605000312800070090201000007000004000000300060300008500",
+      "solution": "938541276716823459524796138675489312843172695291635847159264783482357961367918524",
+      "required_tier": "advanced",
+      "hardest_technique": "naked_triple",
+      "hardest_technique_label": "Naked Triple",
+      "techniques_used": [
+        "naked_single",
+        "full_house",
+        "hidden_single",
+        "naked_pair",
+        "box_line_reduction",
+        "naked_triple",
+        "x_wing",
+        "hidden_pair"
+      ],
+      "description": "Freshly generated. You'll need Naked Triple to crack it without guessing."
+    },
+    {
+      "puzzle_id": "gen_d752fdd8",
+      "title": "Fresh Advanced \u00b7 Naked Triple",
+      "difficulty": "advanced",
+      "generated": true,
+      "meets_level": true,
+      "clue_count": 24,
+      "puzzle": "300097006008000430000200100650000004000069000000580000000901000080000610200070090",
+      "solution": "321497856978615432465238179657123984843769521192584763736951248589342617214876395",
+      "required_tier": "advanced",
+      "hardest_technique": "naked_triple",
+      "hardest_technique_label": "Naked Triple",
+      "techniques_used": [
+        "hidden_single",
+        "hidden_pair",
+        "naked_pair",
+        "pointing_pair",
+        "naked_triple",
+        "naked_single",
+        "full_house"
+      ],
+      "description": "Freshly generated. You'll need Naked Triple to crack it without guessing."
+    }
+  ]
+}

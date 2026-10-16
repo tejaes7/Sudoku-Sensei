@@ -9,7 +9,7 @@ The **AI Teacher** chat is neuro-symbolic: the CSP engine reasons and verifies, 
 ## Run
 
 ```bash
-pip install fastapi uvicorn httpx
+pip install -r requirements.txt
 python -m uvicorn sudoku_ai_coach.api.app:app --host 127.0.0.1 --port 8000
 ```
 
@@ -17,6 +17,14 @@ Then open http://localhost:8000.
 
 Optional, to let an LLM phrase the AI Teacher's answers: copy `.env.example` to `.env` and set `AI_TEACHER_API_KEY`
 (plus `AI_TEACHER_BASE_URL` / `AI_TEACHER_MODEL` for Groq, Gemini, OpenRouter, ...).
+
+## Deploy (Render)
+
+`render.yaml` defines a free Render web service. On https://dashboard.render.com choose
+**New > Blueprint**, select this GitHub repo and apply. Render installs `requirements.txt` and runs uvicorn
+with a single worker, because the board and coach sessions live in server memory. Fill in the `AI_TEACHER_*`
+variables when prompted to enable the LLM, or leave them blank for the offline CSP-only teacher.
+The free plan sleeps after 15 minutes idle, so the first request after that takes about 30 seconds.
 
 ## Test
 

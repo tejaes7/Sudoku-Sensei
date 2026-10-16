@@ -5,4 +5,6 @@ venv/
 .env
 .pytest_cache/
 .coverage
-data/
+data/*
+!data/puzzle_bank.json
+!data/generated_pool.json
