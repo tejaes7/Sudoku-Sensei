@@ -5,7 +5,7 @@ Computes candidate domains, MRV variable, singletons, and constraint analytics f
 
 import sys
 import os
-from typing import Dict, Set, List, Any, Optional
+from typing import Dict, Set, List, Any, Optional, Tuple
 
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if PARENT_DIR not in sys.path:
@@ -15,7 +15,7 @@ from src.board import SQUARES, PEERS, SQUARE_TO_COORD
 from .board_state import BoardState
 
 
-def compute_domains(grid: List[List[int]]) -> Tuple_Domains:
+def compute_domains(grid: List[List[int]]) -> Tuple[Dict[str, Set[int]], bool]:
     """
     Compute candidate domains for all 81 cells based on current grid state.
     Returns:

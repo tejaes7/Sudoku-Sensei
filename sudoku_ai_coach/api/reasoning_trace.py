@@ -7,7 +7,7 @@ Zero modifications to src/ - reuses SQUARES, UNITS, PEERS, UNIT_LIST from src.bo
 import sys
 import os
 from dataclasses import dataclass, asdict
-from typing import Literal, Optional, List, Dict, Tuple, Set
+from typing import Literal, Optional, List, Dict, Tuple, Set, Any
 
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if PARENT_DIR not in sys.path:
