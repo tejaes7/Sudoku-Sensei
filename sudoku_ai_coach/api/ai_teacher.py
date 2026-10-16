@@ -67,7 +67,8 @@ def _read_dotenv() -> Dict[str, str]:
 
 
 def get_llm_config() -> Dict[str, Optional[str]]:
-    env = {**_read_dotenv(), **os.environ}
+    # Strip values: a key or model pasted into a host's dashboard often carries a trailing newline
+    env = {k: v.strip() for k, v in {**_read_dotenv(), **os.environ}.items()}
     api_key = env.get("AI_TEACHER_API_KEY") or env.get("OPENAI_API_KEY") or env.get("GROQ_API_KEY")
     return {
         "api_key": api_key or None,
